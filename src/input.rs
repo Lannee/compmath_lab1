@@ -1,5 +1,4 @@
 use std::fmt;
-use std::fmt::write;
 use nalgebra::{DMatrix, DVector};
 use serde::Deserialize;
 use serde_json;

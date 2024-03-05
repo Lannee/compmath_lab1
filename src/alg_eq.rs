@@ -1,45 +1,9 @@
 use std::fmt;
 
-use nalgebra::{ComplexField, DMatrix, DVector};
 
-pub fn solve(a: &Vec<Vec<f64>>, b: &Vec<f64>) {
-    assert!(a.len() == b.len() && a[0].len() == b.len());
+use nalgebra::{DMatrix, DVector};
 
-
-    let approximation: Vec<f64> = vec![0.; a.len()];
-
-    let c = get_c(a, b);
-
-
-
-    // for el_vec in c {
-    //     for el in el_vec {
-    //         print!("{el} ");
-    //     }
-    //     println!();
-    // }
-}
-
-fn get_c(a: &Vec<Vec<f64>>, b: &Vec<f64>) -> Vec<Vec<f64>> {
-    let mut c: Vec<Vec<f64>> = Vec::new();
-
-    for i in 0..a.len() {
-        let x_i_i = a[i][i]; 
-
-        let mut inner_vec_c:Vec<f64> = Vec::new();
-        for j in 0..a.len() {
-
-            if j != i {
-                inner_vec_c.push(-a[i][j]/x_i_i);
-            }
-        }
-        inner_vec_c.push(b[i]/x_i_i);
-        c.push(inner_vec_c);
-    }
-    c
-}
-
-
+use crate::formating::as_f64_formated;
 
 #[derive(Debug)]
 pub struct Equation {
@@ -53,7 +17,7 @@ pub struct Equation {
 #[derive(Debug)]
 pub enum SolveError {
     ZerosOnDiagonal,
-    OutOfMaxIterations,
+    OutOfMaxIterations(DVector<f64>),
     NotDiagonalDominant
 }
 
@@ -61,7 +25,7 @@ impl fmt::Display for SolveError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ZerosOnDiagonal => write!(f, "Zeroes on diagonal found"),
-            Self::OutOfMaxIterations => write!(f, "Out if max iterations"),
+            Self::OutOfMaxIterations(solve) => write!(f, "Maximum iteration limit reached, reached solve value: {}", solve.map(|x| as_f64_formated(x))),
             Self::NotDiagonalDominant => write!(f, "Matrix is not diagonal dominant")
         }
     }
@@ -71,11 +35,15 @@ impl Equation {
 
     pub fn try_solve(&mut self) -> Result<&Self, SolveError> {
 
+        // println!("Init matrix: {}", self.matrix);
+
         if !self.is_dominant_diagonal() {
             return Err(SolveError::NotDiagonalDominant);
         }
 
         self.as_simple_iterations()?.as_zero_solved();
+
+        // println!("Matrix in simple iteration format: {}", self.matrix);
 
         let mut new_iteration_solve: DVector<f64> = self.solve.as_ref().unwrap().clone();
 
@@ -91,7 +59,8 @@ impl Equation {
             }
         }
 
-        Err(SolveError::OutOfMaxIterations)
+        Err(SolveError::OutOfMaxIterations(self.solve.as_ref().unwrap().clone()))
+        // Ok(self)
     }
 
     fn is_dominant_diagonal(&self) -> bool {
@@ -143,13 +112,11 @@ impl Equation {
 
         for i in 0..new_iteration_solve.len() {
             for j in 0..new_iteration_solve.len() {
-                // println!("self_solve[j][{j}]{} * self.matrix[(i, j)][({i}, {j})]{}", self_solve[j], self.matrix[(i, j)]);
                 new_iteration_solve[i] += self_solve[j] * self.matrix[(i, j)];
-                // println!("new_iteration_solve = {:?}", new_iteration_solve);
             }
             new_iteration_solve[i] += self.res_vec[i];
         }
-        // println!("new_iteration_solve = {:?}", new_iteration_solve);
+        // println!("New solve vector: {}", new_iteration_solve);
         new_iteration_solve
     }
 
